@@ -1,7 +1,29 @@
-https://reader.readthedocs.io/en/latest/
-https://github.com/open-telemetry/opentelemetry-python
-https://fastapi-users.github.io/fastapi-users/latest/
-https://github.com/fastapi-users/fastapi-users/blob/master/fastapi_users/authentication/strategy/db/models.py
-https://fastapi.tiangolo.com/async/#asynchronous-code
-https://fastapi-users.github.io/fastapi-users/latest/configuration/routers/verify/
-https://fastapi-users.github.io/fastapi-users/latest/usage/routes/#users-router
+# Kewpie
+
+Experimental video queue.
+
+## Run Locally
+
+Clone the project
+
+```bash
+  git clone https://github.com/vincecima/kewpie
+```
+
+Go to the project directory
+
+```bash
+  cd kewpie
+```
+
+Install dependencies
+
+```bash
+  just install
+```
+
+Start the server
+
+```bash
+  just dev
+```
