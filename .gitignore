@@ -10,3 +10,6 @@ dmypy.json
 
 # SQLite
 *.db
+
+# direnv
+.envrc
