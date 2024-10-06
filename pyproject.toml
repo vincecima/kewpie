@@ -8,6 +8,15 @@ dependencies = [
     "aiosqlite>=0.20.0",
     "fastapi-users[sqlalchemy]>=13.0.0",
     "fastapi[standard]>=0.115.0",
+    "opentelemetry-distro>=0.48b0",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+    "pydantic-settings>=2.5.2",
+]
+
+[tool.mypy]
+plugins = [
+  "pydantic.mypy"
 ]
 
 [tool.uv]
