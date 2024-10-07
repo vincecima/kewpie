@@ -1,22 +1,16 @@
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Optional
 
-from fastapi import Depends, FastAPI, Request
-from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
-from fastapi.responses import HTMLResponse
+from fastapi import Depends, FastAPI, Request, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi_users import BaseUserManager, FastAPIUsers, schemas, UUIDIDMixin
-from fastapi_users_db_sqlalchemy import (
-    SQLAlchemyBaseUserTableUUID,
-    SQLAlchemyUserDatabase,
-)
-from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
 from fastapi_users.authentication import (
     AuthenticationBackend,
-    BearerTransport,
+    CookieTransport,
     JWTStrategy,
 )
 from fastapi_users_db_sqlalchemy import (
@@ -116,7 +110,7 @@ async def get_user_db(session: AsyncSession = Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)
 
 
-bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+cookie_transport = CookieTransport()
 
 
 def get_jwt_strategy() -> JWTStrategy:
@@ -125,7 +119,7 @@ def get_jwt_strategy() -> JWTStrategy:
 
 auth_backend = AuthenticationBackend(
     name="jwt",
-    transport=bearer_transport,
+    transport=cookie_transport,
     get_strategy=get_jwt_strategy,
 )
 
@@ -134,24 +128,17 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
-    async def on_after_register(self, user: User, request: Request | None = None):
-        print(f"User {user.id} has registered.")
-
-    async def on_after_forgot_password(
+    async def on_after_login(
         self,
         user: User,
-        token: str,
-        request: Request | None = None,
+        request: Optional[Request] = None,
+        response: Optional[Response] = None,
     ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
-
-    async def on_after_request_verify(
-        self,
-        user: User,
-        token: str,
-        request: Request | None = None,
-    ):
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+        if response is None:
+            return
+        else:
+            response.status_code = 303
+            response.headers["Location"] = "/"
 
 
 async def get_user_manager(user_db=Depends(get_user_db)):
@@ -174,6 +161,7 @@ fastapi_users = FastAPIUsers[User, uuid.UUID](
     get_user_manager,
     [auth_backend],
 )
+current_user = fastapi_users.current_user(optional=True)
 
 settings = Settings()
 app = FastAPI(lifespan=lifespan)
@@ -189,7 +177,7 @@ templates = Jinja2Templates(directory="templates")
 
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
+    prefix="/auth/cookie",
     tags=["auth"],
 )
 app.include_router(
@@ -200,10 +188,18 @@ app.include_router(
 
 
 @app.get("/", response_class=HTMLResponse)
-def read_root(request: Request):
-    return templates.TemplateResponse(request=request, name="base.html")
+def read_root(request: Request, user: User = Depends(current_user)):
+    if user:
+        return RedirectResponse("/home")
+    else:
+        return RedirectResponse("/login")
 
 
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: str | None = None):
-    return {"item_id": item_id, "q": q}
+@app.get("/home", response_class=HTMLResponse)
+def read_home(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse(request=request, name="home.html")
+
+
+@app.get("/login", response_class=HTMLResponse)
+def read_login(request: Request, user: User = Depends(current_user)):
+    return templates.TemplateResponse(request=request, name="login.html")
